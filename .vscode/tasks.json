@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Run Go",
+        "type": "shell",
+        "command": "go run .", // Runs Go in the current directory
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": ["$go"]
+      }
+    ]
+  }

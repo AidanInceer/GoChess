@@ -2,83 +2,37 @@ package chess
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 )
 
 type Board struct {
 	Cells [][]Cell
 }
 
-type Cell struct {
-	Row      int
-	Col      int
-	Color    string
-	HasPiece bool
-	Piece    Piece
-}
-
-func (board *Board) Display() *Cell {
+func (board *Board) Display() {
 	for i := len(board.Cells) - 1; i >= 0; i-- {
 		row := board.Cells[i]
 		r := []string{}
 		for _, cell := range row {
-			if cell.HasPiece {
+			if cell.Piece != nil {
 				r = append(r, " "+cell.Piece.Display+" ")
 			} else {
 				r = append(r, " _ ")
 			}
 		}
-		fmt.Println(row[0].Row, r)
+		fmt.Printf("%d %s\n", i+1, strings.Join(r, ""))
 	}
 	// Print column numbers
-	fmt.Println("    0   1   2   3   4   5   6   7")
-	return nil
+	fmt.Println("   a  b  c  d  e  f  g  h")
 }
 
-func (board *Board) Move(move *Move) bool {
-	// check if the move is valid
-	if !move.IsValid() {
-		return false
-	}
-
-	fR := move.From.Row
-	fC := move.From.Col
-	tR := move.To.Row
-	tC := move.To.Col
-
-	if !board.IsInBounds(fR, fC) || !board.IsInBounds(tR, tC) {
-		return false
-	}
-
-	fromCell := board.GetCell(fR, fC)
-	toCell := board.GetCell(tR, tC)
-
-	// check if the from cell has a piece
-	if !fromCell.HasPiece {
-		return false
-	}
-
-	// Check if the to cell is empty or contains a piece of the other colour which is not a king
-	if toCell.HasPiece {
-		if toCell.Piece.Color == fromCell.Piece.Color {
-			return false
-		}
-	}
-
-	// check if move is in valid move for current from piece
-	if !fromCell.Piece.InValidMoves(move.To) {
-		return false
-	}
-
-	fromCell.HasPiece = false
-	toCell.HasPiece = true
-	toCell.Piece = fromCell.Piece
-	fromCell.Piece = Piece{}
-
-	return true
+func (board *Board) GetCell(row int, col int) Cell {
+	return board.Cells[row][col]
 }
 
-func (board *Board) GetCell(row int, col int) *Cell {
-	return &board.Cells[row][col]
+func (board *Board) GetCellByPosition(position Position) Cell {
+	return board.Cells[position.Row][position.Col]
 }
 
 // boundard limit checks
@@ -88,45 +42,70 @@ func (board *Board) IsInBounds(row int, col int) bool {
 
 // check if the cell has a piece
 func (board *Board) HasPiece(row int, col int) bool {
-	return board.Cells[row][col].HasPiece
+	return board.Cells[row][col].Piece != nil
 }
 
-// func (board *Board) getCurrentRow(currentCell Cell) []Cell {
-// 	return board.Cells[currentCell.Row]
-// }
+func (board *Board) GetRow(currentCell Cell) []Cell {
+	return board.Cells[currentCell.Position.Row]
+}
 
-// func (board *Board) getCurrentCol(currentCell Cell) []Cell {
-// 	return board.Cells[currentCell.Col]
-// }
+func (board *Board) GetRowPositions(currentCell Cell) []Position {
+	row := board.GetRow(currentCell)
+	positions := []Position{}
+	for _, cell := range row {
+		positions = append(positions, cell.Position)
+	}
+	return positions
+}
 
-func (board *Board) GetDiagonals(currentCell Cell) [][]int {
-	diagonals := []Cell{}
-	currentRow := currentCell.Row
-	currentCol := currentCell.Col
+func (board *Board) GetCol(currentCell Cell) []Cell {
+	col := make([]Cell, 8)
+	for i := 0; i < 8; i++ {
+		col[i] = board.Cells[i][currentCell.Position.Col]
+	}
+	return col
+}
+
+func (board *Board) GetColPositions(currentCell Cell) []Position {
+	col := board.GetCol(currentCell)
+	positions := []Position{}
+	for _, cell := range col {
+		positions = append(positions, cell.Position)
+	}
+	return positions
+}
+func (board *Board) CellDiagonals(currentCell Cell) []Position {
+	diagonals := []Position{}
+	currentRow := currentCell.Position.Row
+	currentCol := currentCell.Position.Col
 
 	// get up left
 	for i := 1; currentRow+i < 8 && currentCol-i >= 0; i++ {
-		diagonals = append(diagonals, board.Cells[currentRow+i][currentCol-i])
+		diagonals = append(diagonals, Position{Row: currentRow + i, Col: currentCol - i})
 	}
 
 	// get up right
 	for i := 1; currentRow+i < 8 && currentCol+i < 8; i++ {
-		diagonals = append(diagonals, board.Cells[currentRow+i][currentCol+i])
+		diagonals = append(diagonals, Position{Row: currentRow + i, Col: currentCol + i})
 	}
 
 	// get down left
 	for i := 1; currentRow-i >= 0 && currentCol-i >= 0; i++ {
-		diagonals = append(diagonals, board.Cells[currentRow-i][currentCol-i])
+		diagonals = append(diagonals, Position{Row: currentRow - i, Col: currentCol - i})
 	}
 
 	// get down right
 	for i := 1; currentRow-i >= 0 && currentCol+i < 8; i++ {
-		diagonals = append(diagonals, board.Cells[currentRow-i][currentCol+i])
+		diagonals = append(diagonals, Position{Row: currentRow - i, Col: currentCol + i})
 	}
 
-	d := [][]int{}
-	for _, diagonal := range diagonals {
-		d = append(d, []int{diagonal.Row, diagonal.Col})
-	}
-	return d
+	// Sort by row first, then by column
+	sort.Slice(diagonals, func(i, j int) bool {
+		if diagonals[i].Row != diagonals[j].Row {
+			return diagonals[i].Row < diagonals[j].Row
+		}
+		return diagonals[i].Col < diagonals[j].Col
+	})
+
+	return diagonals
 }

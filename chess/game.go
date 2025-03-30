@@ -52,13 +52,32 @@ func (g *Game) PlayerMove(PlayerColor string) {
 
 	if !piece.IsValidPiece(move, g.Board, PlayerColor) {
 		fmt.Println("Invalid piece")
+		g.PlayerMove(PlayerColor)
 	}
 
 	if !piece.InValidMoves(move.To) {
-		fmt.Println("Invalid move")
+		fmt.Println(move.To)
+		fmt.Printf("Move not in valid moves")
+		fmt.Println(piece.ValidMoves)
+		g.PlayerMove(PlayerColor)
 	}
+	fmt.Println("Before: ")
+	fmt.Println(piece.CurrentPosition)
+	fmt.Println(piece.ValidMoves)
 
 	piece.Move(move, &g.Board)
+
+	// naive approach need to update all the valid moves for all the pieces after a piece has been moved.
+	for _, boardRow := range g.Board.Cells {
+		for _, cell := range boardRow {
+			if cell.Piece != nil {
+				cell.Piece.UpdateValidMoves(&g.Board)
+			}
+		}
+	}
+	fmt.Println("After: ")
+	fmt.Println(piece.CurrentPosition)
+	fmt.Println(piece.ValidMoves)
 }
 
 func ClearScreen() {
@@ -105,7 +124,6 @@ func MoveParser(moveString string) Move {
 	cols := []int{}
 
 	for i, char := range moveString {
-		fmt.Println("char:", string(char))
 		if i%2 != 0 {
 			convertedRow, _ := RowToIndex(string(char))
 			rows = append(rows, convertedRow)
@@ -283,7 +301,7 @@ func (g *Game) Setup() {
 		for cellCol := range g.Board.Cells[cellRow] {
 			cell := g.Board.GetCell(cellRow, cellCol)
 			if cell.Piece != nil {
-				cell.Piece.SetValidMoves(&g.Board)
+				cell.Piece.UpdateValidMoves(&g.Board)
 			}
 		}
 

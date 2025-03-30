@@ -35,6 +35,17 @@ func (board *Board) GetCellByPosition(position Position) Cell {
 	return board.Cells[position.Row][position.Col]
 }
 
+func (board *Board) GetCellByRelativePosition(position Position, row int, col int) Cell {
+	_row := position.Row + row
+	_col := position.Col + col
+
+	if !board.IsInBounds(_row, _col) {
+		fmt.Println(_row, _col)
+		return board.Cells[_row][_col]
+	}
+	return board.Cells[position.Row][position.Col]
+}
+
 // boundard limit checks
 func (board *Board) IsInBounds(row int, col int) bool {
 	return row >= 0 && row < 8 && col >= 0 && col < 8

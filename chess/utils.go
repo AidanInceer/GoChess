@@ -1,7 +1,6 @@
 package chess
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -21,10 +20,6 @@ func RowToIndex(rank string) (int, error) {
 			"5": 4, "6": 5, "7": 6, "8": 7,
 		},
 	}
-	fmt.Println(rowMap.Map)
-
-	fmt.Println(rowMap.Map[rank])
-
 	return rowMap.Map[rank], nil
 
 }
@@ -42,6 +37,5 @@ func ColumnToIndex(file string) (int, error) {
 		},
 	}
 
-	fmt.Println(columnMap.Map[file])
 	return columnMap.Map[file], nil
 }

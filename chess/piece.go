@@ -21,6 +21,7 @@ func (p *Piece) Move(move Move, b *Board) {
 			b.Cells[move.To.Row][move.To.Col].Piece = p
 
 			p.History = append(p.History, move.From)
+			p.UpdateCurrentPosition(move.To.Row, move.To.Col)
 			return
 		}
 	}
@@ -46,10 +47,6 @@ func (p *Piece) IsValidPiece(move Move, b Board, color string) bool {
 	return true
 }
 
-func (p *Piece) GetName() string {
-	return p.Name
-}
-
 func (p *Piece) InValidMoves(move Position) bool {
 	for _, validMove := range p.ValidMoves {
 		if validMove == move {
@@ -57,6 +54,10 @@ func (p *Piece) InValidMoves(move Position) bool {
 		}
 	}
 	return false
+}
+
+func (p *Piece) GetName() string {
+	return p.Name
 }
 
 func (p *Piece) GetColor() string {
@@ -67,6 +68,11 @@ func (p *Piece) GetCurrentPosition() Position {
 	return p.CurrentPosition
 }
 
+func (p *Piece) UpdateCurrentPosition(row int, col int) {
+	p.CurrentPosition.Row = row
+	p.CurrentPosition.Col = col
+}
+
 func (p *Piece) GetValidMoves() []Position {
 	return p.ValidMoves
 }
@@ -75,7 +81,7 @@ func (p *Piece) GetHistory() []Position {
 	return p.History
 }
 
-func (p *Piece) SetValidMoves(b *Board) {
+func (p *Piece) UpdateValidMoves(b *Board) {
 
 	p.ValidMoves = []Position{}
 
@@ -109,12 +115,38 @@ func (p *Piece) PawnMoves(b *Board) []Position {
 	// if white and Piece history is Empty
 	if len(p.History) == 0 && p.Color == "White" {
 		ValidPositions = []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col}, {p.CurrentPosition.Row + 2*operator, p.CurrentPosition.Col}}
+		// If Black and Piece history is Empty
 	} else if len(p.History) == 0 && p.Color == "Black" {
 		ValidPositions = []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col}, {p.CurrentPosition.Row + 2*operator, p.CurrentPosition.Col}}
+		// If White and has already moved
 	} else if len(p.History) != 0 && p.Color == "White" {
 		ValidPositions = []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col}}
+		// If Black and has already moved
 	} else if len(p.History) != 0 && p.Color == "Black" {
 		ValidPositions = []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col}}
+	}
+
+	// Trim out invalid positions e.g. cannot move if opposite coloured piece in above/below
+	if b.GetCellByRelativePosition(p.CurrentPosition, operator, 0).Piece == nil {
+	} else if b.GetCellByRelativePosition(p.CurrentPosition, operator, 0).Piece.Color != p.Color {
+		ValidPositions = []Position{}
+
+	}
+
+	takePositions := []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row + operator, p.CurrentPosition.Col + 1}}
+
+	for _, position := range takePositions {
+		if position.IsInBounds() {
+			if b.GetCellByPosition(position).Piece == nil {
+			} else if b.GetCellByPosition(position).Piece.Color != p.Color {
+				ValidPositions = append(ValidPositions, position)
+			}
+
+			if b.GetCellByPosition(position).Piece == nil {
+			} else if b.GetCellByPosition(position).Piece.Color != p.Color {
+				ValidPositions = append(ValidPositions, position)
+			}
+		}
 	}
 
 	p.ValidMoves = ValidPositions

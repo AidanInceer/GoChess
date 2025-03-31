@@ -25,17 +25,29 @@ type Player struct {
 func (g *Game) Play() (bool, error) {
 	moveNum := 0
 
-	for g.GameState == 0 {
+	for g.GameState == 0 || g.GameState == 1 {
 		moveNum++
 		if moveNum%2 != 0 {
-			g.CurrentPlayer = &g.Players[0]
-			g.PlayerMove(g.CurrentPlayer.Color)
+			if g.GameState == 0 {
+				g.CurrentPlayer = &g.Players[0]
+				g.PlayerMove(g.CurrentPlayer.Color)
+			} else if g.GameState == 1 {
+			}
 
 		} else {
-			g.CurrentPlayer = &g.Players[1]
-			g.PlayerMove(g.CurrentPlayer.Color)
+			if g.GameState == 0 {
+				g.CurrentPlayer = &g.Players[0]
+				g.PlayerMove(g.CurrentPlayer.Color)
+			} else if g.GameState == 1 {
+			}
 
 		}
+
+	}
+	if g.GameState == 2 {
+		fmt.Println("Checkmate")
+	} else if g.GameState == 3 {
+		fmt.Println("Stalemate")
 	}
 
 	return true, nil
@@ -52,8 +64,6 @@ func (g *Game) PlayerMove(PlayerColor string) {
 	piece.Move(move, &g.Board)
 
 	g.RefreshValidMoves()
-
-	
 
 }
 

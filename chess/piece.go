@@ -11,7 +11,7 @@ type Piece struct {
 	ValidMoves      []Position
 	InGame          bool
 	Display         string
-	History         []Position
+	History         []Move
 }
 
 func (p *Piece) Move(move Move, b *Board) {
@@ -20,9 +20,11 @@ func (p *Piece) Move(move Move, b *Board) {
 			b.Cells[move.From.Row][move.From.Col].Piece = nil
 			b.Cells[move.To.Row][move.To.Col].Piece = p
 
-			p.History = append(p.History, move.From)
 			p.UpdateCurrentPosition(move.To.Row, move.To.Col)
-			return
+
+			p.UpdateValidMoves(b)
+
+			p.History = append(p.History, move)
 		}
 	}
 
@@ -73,67 +75,61 @@ func (p *Piece) UpdateCurrentPosition(row int, col int) {
 	p.CurrentPosition.Col = col
 }
 
-func (p *Piece) GetValidMoves() []Position {
-	return p.ValidMoves
-}
-
-func (p *Piece) GetHistory() []Position {
-	return p.History
-}
-
 func (p *Piece) UpdateValidMoves(b *Board) {
-
-	p.ValidMoves = []Position{}
 
 	switch p.Name {
 	case "Pawn":
-		p.ValidMoves = p.PawnMoves(b)
+		p.PawnMoves(b)
 	case "Knight":
-		p.ValidMoves = p.KnightMoves(b)
+		p.KnightMoves(b)
 	case "Bishop":
-		p.ValidMoves = p.BishopMoves(b)
+		p.BishopMoves(b)
 	case "Rook":
-		p.ValidMoves = p.RookMoves(b)
+		p.RookMoves(b)
 	case "Queen":
-		p.ValidMoves = p.QueenMoves(b)
+		p.QueenMoves(b)
 	case "King":
-		p.ValidMoves = p.KingMoves(b)
+		p.KingMoves(b)
 	}
 }
 
-func (p *Piece) PawnMoves(b *Board) []Position {
+func (p *Piece) PawnMoves(b *Board) {
 	//get current piece position
 
-	// determine what color it is to set the +/- operator
-	operator := 1
+	// determine what color it is to set the +/- op
+	op := 1
 	if p.Color == "Black" {
-		operator = -1
+		op = -1
 	}
 
 	var ValidPositions []Position
 
 	// if white and Piece history is Empty
 	if len(p.History) == 0 && p.Color == "White" {
-		ValidPositions = []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col}, {p.CurrentPosition.Row + 2*operator, p.CurrentPosition.Col}}
+		ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}, {p.CurrentPosition.Row + 2*op, p.CurrentPosition.Col}}
 		// If Black and Piece history is Empty
 	} else if len(p.History) == 0 && p.Color == "Black" {
-		ValidPositions = []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col}, {p.CurrentPosition.Row + 2*operator, p.CurrentPosition.Col}}
+		ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}, {p.CurrentPosition.Row + 2*op, p.CurrentPosition.Col}}
 		// If White and has already moved
 	} else if len(p.History) != 0 && p.Color == "White" {
-		ValidPositions = []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col}}
+		// If the cell in front is empty
+		if b.GetCellByRelativePosition(p.CurrentPosition, op, 0).Piece == nil {
+			ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}}
+			// If the cell in front is occupied by an enemy piece
+		} else {
+			ValidPositions = []Position{}
+		}
 		// If Black and has already moved
 	} else if len(p.History) != 0 && p.Color == "Black" {
-		ValidPositions = []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col}}
+		if b.GetCellByRelativePosition(p.CurrentPosition, op, 0).Piece == nil {
+			ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}}
+			// If the cell in front is occupied by an enemy piece
+		} else {
+			ValidPositions = []Position{}
+		}
 	}
 
-	// Trim out invalid positions e.g. cannot move if opposite coloured piece in above/below
-	if b.GetCellByRelativePosition(p.CurrentPosition, operator, 0).Piece == nil {
-	} else if b.GetCellByRelativePosition(p.CurrentPosition, operator, 0).Piece.Color != p.Color {
-		ValidPositions = []Position{}
-
-	}
-
-	takePositions := []Position{{p.CurrentPosition.Row + operator, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row + operator, p.CurrentPosition.Col + 1}}
+	takePositions := []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row + op, p.CurrentPosition.Col + 1}}
 
 	for _, position := range takePositions {
 		if position.IsInBounds() {
@@ -141,33 +137,42 @@ func (p *Piece) PawnMoves(b *Board) []Position {
 			} else if b.GetCellByPosition(position).Piece.Color != p.Color {
 				ValidPositions = append(ValidPositions, position)
 			}
-
-			if b.GetCellByPosition(position).Piece == nil {
-			} else if b.GetCellByPosition(position).Piece.Color != p.Color {
-				ValidPositions = append(ValidPositions, position)
-			}
 		}
 	}
 
-	p.ValidMoves = ValidPositions
+	// Implement En passant
 
-	return ValidPositions
+	p.ValidMoves = ValidPositions
 }
 
-func (p *Piece) KnightMoves(b *Board) []Position {
+func (p *Piece) KnightMoves(b *Board) {
 
 	KnightPositions := []Position{{p.CurrentPosition.Row + 2, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row + 2, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row - 2, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row - 2, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row + 1, p.CurrentPosition.Col + 2}, {p.CurrentPosition.Row + 1, p.CurrentPosition.Col - 2}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col + 2}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col - 2}}
-
 	ValidPositions := []Position{}
 	for _, position := range KnightPositions {
-		if position.IsInBounds() {
+		currentPieceColour := b.GetCellByPosition(p.CurrentPosition).Piece.Color
+		if position.IsInBounds() && position.CanBeOccupied(b, currentPieceColour) {
 			ValidPositions = append(ValidPositions, position)
 		}
 	}
 
 	p.ValidMoves = ValidPositions
-	return ValidPositions
+}
 
+func (p *Piece) RookMoves(b *Board) {
+
+	currentCell := b.GetCell(p.CurrentPosition.Row, p.CurrentPosition.Col)
+
+	Row := b.GetRow(currentCell)
+	Column := b.GetCol(currentCell)
+
+	// Convert the Rows and Column Cells to a list of Position if its not the current position
+	RowPositions := p.CheckLinearMoves(b, Row, currentCell, "row")
+	ColumnPositions := p.CheckLinearMoves(b, Column, currentCell, "col")
+
+	ValidMoves := append(RowPositions, ColumnPositions...)
+
+	p.ValidMoves = ValidMoves
 }
 
 func (p *Piece) BishopMoves(b *Board) []Position {
@@ -189,46 +194,19 @@ func (p *Piece) BishopMoves(b *Board) []Position {
 	return ValidPositions
 }
 
-func (p *Piece) RookMoves(b *Board) []Position {
-
-	currentCell := b.GetCell(p.CurrentPosition.Row, p.CurrentPosition.Col)
-
-	Columns := b.GetCol(currentCell)
-	Rows := b.GetRow(currentCell)
-
-	// Convert the Rows and Column Cells to a list of Position if its not the current position
-	RowPositions := []Position{}
-	ColumnPositions := []Position{}
-
-	for _, row := range Rows {
-		if row.Position != p.CurrentPosition {
-			RowPositions = append(RowPositions, row.Position)
-		}
-	}
-
-	for _, column := range Columns {
-		if column.Position != p.CurrentPosition {
-			ColumnPositions = append(ColumnPositions, column.Position)
-		}
-	}
-
-	ValidPositions := append(RowPositions, ColumnPositions...)
-
-	p.ValidMoves = ValidPositions
-
-	return ValidPositions
-}
-
 func (p *Piece) QueenMoves(b *Board) []Position {
 
 	currentCell := b.GetCell(p.CurrentPosition.Row, p.CurrentPosition.Col)
 
 	Diagonals := b.CellDiagonals(currentCell)
-	Columns := b.GetColPositions(currentCell)
-	Rows := b.GetRowPositions(currentCell)
+	Column := b.GetCol(currentCell)
+	Row := b.GetRow(currentCell)
 
-	ValidPositions := append(Diagonals, Columns...)
-	ValidPositions = append(ValidPositions, Rows...)
+	RowPositions := p.CheckLinearMoves(b, Row, currentCell, "row")
+	ColumnPositions := p.CheckLinearMoves(b, Column, currentCell, "col")
+
+	ValidPositions := append(Diagonals, ColumnPositions...)
+	ValidPositions = append(ValidPositions, RowPositions...)
 
 	p.ValidMoves = ValidPositions
 
@@ -251,4 +229,40 @@ func (p *Piece) KingMoves(b *Board) []Position {
 	p.ValidMoves = ValidPositions
 
 	return ValidPositions
+}
+
+func (p *Piece) CheckLinearMoves(board *Board, cells []Cell, currCell Cell, linearType string) []Position {
+
+	outputPosition := []Position{}
+	var Curr int
+	if linearType == "col" {
+		Curr = currCell.Position.Row
+	} else if linearType == "row" {
+		Curr = currCell.Position.Col
+	}
+
+	for i := Curr + 1; i <= 7; i++ {
+		if !cells[i].Position.HasPiece(board) {
+			outputPosition = append(outputPosition, cells[i].Position)
+		} else if cells[i].Position.HasPiece(board) && cells[i].Piece.Color == currCell.Piece.Color {
+			break
+		} else if cells[i].Position.HasPiece(board) && cells[i].Piece.Color != currCell.Piece.Color {
+			outputPosition = append(outputPosition, cells[i].Position)
+			break
+		}
+	}
+
+	for i := Curr - 1; i >= 0; i-- {
+		if !cells[i].Position.HasPiece(board) {
+			outputPosition = append(outputPosition, cells[i].Position)
+		} else if cells[i].Position.HasPiece(board) && cells[i].Piece.Color == currCell.Piece.Color {
+			break
+		} else if cells[i].Position.HasPiece(board) && cells[i].Piece.Color != currCell.Piece.Color {
+			outputPosition = append(outputPosition, cells[i].Position)
+			break
+		}
+	}
+
+	return outputPosition
+
 }

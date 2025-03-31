@@ -1,6 +1,7 @@
 package chess
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -38,4 +39,29 @@ func ColumnToIndex(file string) (int, error) {
 	}
 
 	return columnMap.Map[file], nil
+}
+
+func IndexToRow(index int) (string, error) {
+	rowMap := map[int]string{
+		0: "1", 1: "2", 2: "3", 3: "4",
+		4: "5", 5: "6", 6: "7", 7: "8",
+	}
+
+	if rank, exists := rowMap[index]; exists {
+		return rank, nil
+	}
+	return "", fmt.Errorf("invalid index for row: %d", index)
+}
+
+// Convert index (0-7) back to file ("a"-"h")
+func IndexToColumn(index int) (string, error) {
+	columnMap := map[int]string{
+		0: "a", 1: "b", 2: "c", 3: "d",
+		4: "e", 5: "f", 6: "g", 7: "h",
+	}
+
+	if file, exists := columnMap[index]; exists {
+		return file, nil
+	}
+	return "", fmt.Errorf("invalid index for column: %d", index)
 }

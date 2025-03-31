@@ -47,26 +47,19 @@ func (g *Game) PlayerMove(PlayerColor string) {
 
 	// Request player move from the user
 	fmt.Printf("%s's turn:\n", PlayerColor)
-	move := g.RequestMove()
-	piece := g.Board.GetCell(move.From.Row, move.From.Col).Piece
+	piece, move := g.RequestMove(PlayerColor)
 
-	if !piece.IsValidPiece(move, g.Board, PlayerColor) {
-		fmt.Println("Invalid piece")
-		g.PlayerMove(PlayerColor)
-	}
-
-	if !piece.InValidMoves(move.To) {
-		fmt.Println(move.To)
-		fmt.Printf("Move not in valid moves")
-		fmt.Println(piece.ValidMoves)
-		g.PlayerMove(PlayerColor)
-	}
-	fmt.Println("Before: ")
-	fmt.Println(piece.CurrentPosition)
-	fmt.Println(piece.ValidMoves)
-
+	fmt.Println("Moved Piece")
 	piece.Move(move, &g.Board)
+	
 
+	g.RefreshValidMoves()
+
+	fmt.Println(DisplayListOfPositions(piece.ValidMoves))
+
+}
+
+func (g *Game) RefreshValidMoves() {
 	// naive approach need to update all the valid moves for all the pieces after a piece has been moved.
 	for _, boardRow := range g.Board.Cells {
 		for _, cell := range boardRow {
@@ -75,9 +68,6 @@ func (g *Game) PlayerMove(PlayerColor string) {
 			}
 		}
 	}
-	fmt.Println("After: ")
-	fmt.Println(piece.CurrentPosition)
-	fmt.Println(piece.ValidMoves)
 }
 
 func ClearScreen() {
@@ -92,22 +82,29 @@ func ClearScreen() {
 	cmd.Run()
 }
 
-func (g *Game) RequestMove() Move {
+func (g *Game) RequestMove(PlayerColor string) (Piece, Move) {
 
-	inputMove := MoveInput()
+	inputMove := g.MoveInput()
 
-	moveString, valid := ValidatePreInput(inputMove)
+	moveString, valid := g.ValidatePreInput(inputMove)
 
 	if !valid {
-		g.RequestMove()
+		g.RefreshValidMoves()
+		g.PlayerMove(PlayerColor)
 	}
-	move := MoveParser(moveString)
+	move := g.MoveParser(moveString)
+	piece := g.Board.GetCell(move.From.Row, move.From.Col).Piece
+	valid = g.ValidatePostConversion(piece, move, PlayerColor)
+	if !valid {
+		g.RefreshValidMoves()
+		g.PlayerMove(PlayerColor)
+	}
 
-	return move
+	return *piece, move
 
 }
 
-func MoveInput() string {
+func (g *Game) MoveInput() string {
 	// Request player move from the user
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter your move: ")
@@ -116,7 +113,7 @@ func MoveInput() string {
 	return inputMove
 }
 
-func MoveParser(moveString string) Move {
+func (g *Game) MoveParser(moveString string) Move {
 	// Example input: "e2e4"
 	// Parse the input move into a Move struct
 	// Assuming the input is always valid and in the format "e2e4"
@@ -141,17 +138,17 @@ func MoveParser(moveString string) Move {
 	return move
 }
 
-func ValidatePreInput(moveString string) (string, bool) {
+func (g *Game) ValidatePreInput(moveString string) (string, bool) {
 
 	if len(moveString) != 4 {
-		fmt.Println("Length of input != 4. Please Input a move in the format e2e4")
+		fmt.Println("Length of input is not 4. Please Input a move in the format e2e4")
 		return moveString, false
 	}
 
 	for i, char := range moveString {
 		if i%2 != 0 {
-			if Contains("01234567", string(char)) == false {
-				fmt.Printf("Character %d %s is not in [01234567]. Please Input a move in the format e2e4", i, string(char))
+			if Contains("12345678", string(char)) == false {
+				fmt.Printf("Character %d %s is not in [12345678]. Please Input a move in the format e2e4", i, string(char))
 				return moveString, false
 			} else if i%2 == 0 {
 				if Contains("abcdefgh", string(char)) == false {
@@ -162,6 +159,20 @@ func ValidatePreInput(moveString string) (string, bool) {
 		}
 	}
 	return moveString, true
+}
+
+func (g *Game) ValidatePostConversion(piece *Piece, move Move, PlayerColor string) bool {
+
+	if piece == nil || !piece.IsValidPiece(move, g.Board, PlayerColor) {
+		fmt.Println("Invalid piece")
+		return false
+	}
+
+	if !piece.InValidMoves(move.To) {
+		fmt.Println("Invalid move:", move.To.Display())
+		return false
+	}
+	return true
 }
 
 func (g *Game) GetCurrentPlayer() *Player {

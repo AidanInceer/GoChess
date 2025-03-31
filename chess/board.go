@@ -2,7 +2,6 @@ package chess
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -84,39 +83,4 @@ func (board *Board) GetColPositions(currentCell Cell) []Position {
 		positions = append(positions, cell.Position)
 	}
 	return positions
-}
-func (board *Board) CellDiagonals(currentCell Cell) []Position {
-	diagonals := []Position{}
-	currentRow := currentCell.Position.Row
-	currentCol := currentCell.Position.Col
-
-	// get up left
-	for i := 1; currentRow+i < 8 && currentCol-i >= 0; i++ {
-		diagonals = append(diagonals, Position{Row: currentRow + i, Col: currentCol - i})
-	}
-
-	// get up right
-	for i := 1; currentRow+i < 8 && currentCol+i < 8; i++ {
-		diagonals = append(diagonals, Position{Row: currentRow + i, Col: currentCol + i})
-	}
-
-	// get down left
-	for i := 1; currentRow-i >= 0 && currentCol-i >= 0; i++ {
-		diagonals = append(diagonals, Position{Row: currentRow - i, Col: currentCol - i})
-	}
-
-	// get down right
-	for i := 1; currentRow-i >= 0 && currentCol+i < 8; i++ {
-		diagonals = append(diagonals, Position{Row: currentRow - i, Col: currentCol + i})
-	}
-
-	// Sort by row first, then by column
-	sort.Slice(diagonals, func(i, j int) bool {
-		if diagonals[i].Row != diagonals[j].Row {
-			return diagonals[i].Row < diagonals[j].Row
-		}
-		return diagonals[i].Col < diagonals[j].Col
-	})
-
-	return diagonals
 }

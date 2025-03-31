@@ -2,6 +2,7 @@ package chess
 
 import (
 	"fmt"
+	"sort"
 )
 
 type Piece struct {
@@ -21,10 +22,11 @@ func (p *Piece) Move(move Move, b *Board) {
 			b.Cells[move.To.Row][move.To.Col].Piece = p
 
 			p.UpdateCurrentPosition(move.To.Row, move.To.Col)
-
+			p.History = append(p.History, move)
 			p.UpdateValidMoves(b)
 
-			p.History = append(p.History, move)
+			fmt.Println(DisplayListOfPositions(p.ValidMoves))
+
 		}
 	}
 
@@ -175,33 +177,23 @@ func (p *Piece) RookMoves(b *Board) {
 	p.ValidMoves = ValidMoves
 }
 
-func (p *Piece) BishopMoves(b *Board) []Position {
+func (p *Piece) BishopMoves(b *Board) {
 
 	currentCell := b.GetCell(p.CurrentPosition.Row, p.CurrentPosition.Col)
 
-	Diagonals := b.CellDiagonals(currentCell)
-
-	ValidPositions := []Position{}
-
-	for _, position := range Diagonals {
-		if position.IsInBounds() {
-			ValidPositions = append(ValidPositions, position)
-		}
-	}
+	ValidPositions := p.CheckDiagonalMoves(b, currentCell)
 
 	p.ValidMoves = ValidPositions
-
-	return ValidPositions
 }
 
-func (p *Piece) QueenMoves(b *Board) []Position {
+func (p *Piece) QueenMoves(b *Board) {
 
 	currentCell := b.GetCell(p.CurrentPosition.Row, p.CurrentPosition.Col)
 
-	Diagonals := b.CellDiagonals(currentCell)
 	Column := b.GetCol(currentCell)
 	Row := b.GetRow(currentCell)
 
+	Diagonals := p.CheckDiagonalMoves(b, currentCell)
 	RowPositions := p.CheckLinearMoves(b, Row, currentCell, "row")
 	ColumnPositions := p.CheckLinearMoves(b, Column, currentCell, "col")
 
@@ -210,10 +202,9 @@ func (p *Piece) QueenMoves(b *Board) []Position {
 
 	p.ValidMoves = ValidPositions
 
-	return ValidPositions
 }
 
-func (p *Piece) KingMoves(b *Board) []Position {
+func (p *Piece) KingMoves(b *Board) {
 
 	ValidPositions := []Position{}
 
@@ -221,14 +212,14 @@ func (p *Piece) KingMoves(b *Board) []Position {
 	KingPositions := []Position{{p.CurrentPosition.Row + 1, p.CurrentPosition.Col}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col}, {p.CurrentPosition.Row, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row + 1, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row + 1, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col - 1}}
 
 	for _, position := range KingPositions {
-		if position.IsInBounds() {
+		if position.IsInBounds() && position.CanBeOccupied(b, p.Color) {
+			// King cannot move to a square where the opponent is attacking
 			ValidPositions = append(ValidPositions, position)
 		}
 	}
 
 	p.ValidMoves = ValidPositions
 
-	return ValidPositions
 }
 
 func (p *Piece) CheckLinearMoves(board *Board, cells []Cell, currCell Cell, linearType string) []Position {
@@ -265,4 +256,67 @@ func (p *Piece) CheckLinearMoves(board *Board, cells []Cell, currCell Cell, line
 
 	return outputPosition
 
+}
+
+func (p *Piece) CheckDiagonalMoves(board *Board, currCell Cell) []Position {
+	diagonals := []Position{}
+	currPosition := currCell.Position
+	currentRow := currPosition.Row
+	currentCol := currPosition.Col
+
+	// get up left
+	for i := 1; currentRow+i < 8 && currentCol-i >= 0; i++ {
+		if board.GetCellByPosition(Position{Row: currentRow + i, Col: currentCol - i}).Piece == nil {
+			diagonals = append(diagonals, Position{Row: currentRow + i, Col: currentCol - i})
+		} else if board.GetCellByPosition(Position{Row: currentRow + i, Col: currentCol - i}).Piece.Color != currCell.Piece.Color {
+			diagonals = append(diagonals, Position{Row: currentRow + i, Col: currentCol - i})
+			break
+		} else {
+			break
+		}
+	}
+
+	// get up right
+	for i := 1; currentRow+i < 8 && currentCol+i < 8; i++ {
+		if board.GetCellByPosition(Position{Row: currentRow + i, Col: currentCol + i}).Piece == nil {
+			diagonals = append(diagonals, Position{Row: currentRow + i, Col: currentCol + i})
+		} else if board.GetCellByPosition(Position{Row: currentRow + i, Col: currentCol + i}).Piece.Color != currCell.Piece.Color {
+			diagonals = append(diagonals, Position{Row: currentRow + i, Col: currentCol + i})
+			break
+		} else {
+			break
+		}
+	}
+	// get down left
+	for i := 1; currentRow-i >= 0 && currentCol-i >= 0; i++ {
+		if board.GetCellByPosition(Position{Row: currentRow - i, Col: currentCol - i}).Piece == nil {
+			diagonals = append(diagonals, Position{Row: currentRow - i, Col: currentCol - i})
+		} else if board.GetCellByPosition(Position{Row: currentRow - i, Col: currentCol - i}).Piece.Color != currCell.Piece.Color {
+			diagonals = append(diagonals, Position{Row: currentRow - i, Col: currentCol - i})
+			break
+		} else {
+			break
+		}
+	}
+	// get down right
+	for i := 1; currentRow-i >= 0 && currentCol+i < 8; i++ {
+		if board.GetCellByPosition(Position{Row: currentRow - i, Col: currentCol + i}).Piece == nil {
+			diagonals = append(diagonals, Position{Row: currentRow - i, Col: currentCol + i})
+		} else if board.GetCellByPosition(Position{Row: currentRow - i, Col: currentCol + i}).Piece.Color != currCell.Piece.Color {
+			diagonals = append(diagonals, Position{Row: currentRow - i, Col: currentCol + i})
+			break
+		} else {
+			break
+		}
+	}
+
+	// Sort by row first, then by column
+	sort.Slice(diagonals, func(i, j int) bool {
+		if diagonals[i].Row != diagonals[j].Row {
+			return diagonals[i].Row < diagonals[j].Row
+		}
+		return diagonals[i].Col < diagonals[j].Col
+	})
+
+	return diagonals
 }

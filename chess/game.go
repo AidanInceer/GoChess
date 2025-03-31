@@ -49,13 +49,11 @@ func (g *Game) PlayerMove(PlayerColor string) {
 	fmt.Printf("%s's turn:\n", PlayerColor)
 	piece, move := g.RequestMove(PlayerColor)
 
-	fmt.Println("Moved Piece")
 	piece.Move(move, &g.Board)
-	
 
 	g.RefreshValidMoves()
 
-	fmt.Println(DisplayListOfPositions(piece.ValidMoves))
+	
 
 }
 

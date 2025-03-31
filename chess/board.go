@@ -84,3 +84,18 @@ func (board *Board) GetColPositions(currentCell Cell) []Position {
 	}
 	return positions
 }
+
+func (board *Board) CheckCellAttacked(position Position, color string) bool {
+
+	// TODO: Figure out a way to speed this up instead of going through all pieces
+	for _, cell := range board.Cells {
+		for _, cell := range cell {
+			if cell.Piece != nil && cell.Piece.Color != color {
+				if cell.Piece.InValidMoves(position) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}

@@ -213,8 +213,9 @@ func (p *Piece) KingMoves(b *Board) {
 
 	for _, position := range KingPositions {
 		if position.IsInBounds() && position.CanBeOccupied(b, p.Color) {
-			// King cannot move to a square where the opponent is attacking
-			ValidPositions = append(ValidPositions, position)
+			if !b.CheckCellAttacked(position, p.Color) {
+				ValidPositions = append(ValidPositions, position)
+			}
 		}
 	}
 

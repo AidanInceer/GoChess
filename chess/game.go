@@ -32,15 +32,21 @@ func (g *Game) Play() (bool, error) {
 		if moveNum%2 != 0 {
 			if g.GameState == 0 {
 				g.CurrentPlayer = &g.Players[0]
-				g.PlayerMove(g.CurrentPlayer.Color)
+				g.PlayerMove(g.CurrentPlayer.Color, g.GameState, 0)
+			} else if g.GameState == 1 {
+				fmt.Println("Check")
+				g.CurrentPlayer = &g.Players[0]
+				g.PlayerMove(g.CurrentPlayer.Color, g.GameState, 0)
 			}
-
 		} else {
 			if g.GameState == 0 {
 				g.CurrentPlayer = &g.Players[1]
-				g.PlayerMove(g.CurrentPlayer.Color)
+				g.PlayerMove(g.CurrentPlayer.Color, g.GameState, 0)
+			} else if g.GameState == 1 {
+				fmt.Println("Check")
+				g.CurrentPlayer = &g.Players[1]
+				g.PlayerMove(g.CurrentPlayer.Color, g.GameState, 0)
 			}
-
 		}
 
 	}
@@ -53,17 +59,28 @@ func (g *Game) Play() (bool, error) {
 	return true, nil
 }
 
-func (g *Game) PlayerMove(PlayerColor string) {
+func (g *Game) PlayerMove(PlayerColor string, GameState int, depth int) {
 	// ClearScreen()
 	g.Board.Display()
 
+	fmt.Println(depth)
+
 	// Request player move from the user
 	fmt.Printf("%s's turn:\n", PlayerColor)
-	piece, move := g.RequestMove(PlayerColor)
+	piece, move := g.RequestMove(PlayerColor, g.GameState, depth)
 
 	piece.Move(move, &g.Board)
 
 	g.RefreshValidMoves()
+	fmt.Println(g.GameState)
+	check, checkmate, stalemate := piece.UpdateGameState(&g.Board)
+	if check {
+		g.GameState = 1
+	} else if checkmate {
+		g.GameState = 2
+	} else if stalemate {
+		g.GameState = 3
+	}
 
 }
 
@@ -97,22 +114,20 @@ func ClearScreen() {
 	cmd.Run()
 }
 
-func (g *Game) RequestMove(PlayerColor string) (Piece, Move) {
+func (g *Game) RequestMove(PlayerColor string, GameState int, depth int) (Piece, Move) {
 
 	inputMove := g.MoveInput()
 
 	moveString, valid := g.ValidatePreInput(inputMove)
 
 	if !valid {
-		g.RefreshValidMoves()
-		g.PlayerMove(PlayerColor)
+		g.PlayerMove(PlayerColor, GameState, depth+1)
 	}
 	move := g.MoveParser(moveString)
 	piece := g.Board.GetCell(move.From.Row, move.From.Col).Piece
 	valid = g.ValidatePostConversion(piece, move, PlayerColor)
 	if !valid {
-		g.RefreshValidMoves()
-		g.PlayerMove(PlayerColor)
+		g.PlayerMove(PlayerColor, g.GameState, depth+1)
 	}
 
 	return *piece, move

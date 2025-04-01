@@ -73,3 +73,14 @@ func (p *Position) HasPiece(b *Board) bool {
 	}
 	return true
 }
+
+func IsInValidMoves(moves []Position, positions []Position) bool {
+	for _, move := range moves {
+		for _, position := range positions {
+			if move.IsEqual(&position) {
+				return true
+			}
+		}
+	}
+	return false
+}

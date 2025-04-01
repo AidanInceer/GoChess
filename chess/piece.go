@@ -129,6 +129,10 @@ func (p *Piece) PawnMoves(b *Board) {
 	}
 
 	// TODO: Implement En passant
+	// whenever a piece is moved append to game move history
+	// if previous piece moved is a pawn and has moved two squares & it is horizontally adjacent to 
+
+	// TODO: Implement Promotion
 
 	p.ValidMoves = ValidPositions
 }
@@ -141,8 +145,8 @@ func (p *Piece) KnightMoves(b *Board) {
 		{p.CurrentPosition.Row - 1, p.CurrentPosition.Col + 2}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col - 2},
 	}
 
-	ValidPositions := make([]Position, 0, len(moves)) // Preallocate capacity
-	currentColor := p.Color                           // Fetch once instead of every loop iteration
+	ValidPositions := make([]Position, 0, len(moves))
+	currentColor := p.Color                          
 
 	for _, pos := range moves {
 		if pos.IsInBounds() && pos.CanBeOccupied(b, currentColor) {
@@ -196,6 +200,10 @@ func (p *Piece) KingMoves(b *Board) {
 			p.ValidMoves = append(p.ValidMoves, newPos)
 		}
 	}
+
+	//TODO: Implement Castling (and inability to castle through check)
+	// iF King and target rook havent moved (no piece history) and cells between them are not attacked
+	// then move position of king then move position of rook
 }
 
 func (p *Piece) CheckLinearMoves(board *Board, cells []Cell, currCell Cell, linearType string) []Position {
@@ -295,4 +303,62 @@ func (p *Piece) CheckDiagonalMoves(board *Board, currCell Cell) []Position {
 	})
 
 	return diagonals
+}
+
+// Check to see if the opposite color king is in the new list of valid moves for that piece,
+// if yes set the game state to 1 (check)
+// if the king also cannot move set the game state to 2 (checkmate)
+// -- also need to check if any other piece can block the current check
+func (p *Piece) UpdateGameState(b *Board) (bool, bool, bool) {
+	color := p.Color
+
+	for _, position := range p.ValidMoves {
+		if b.GetCellByPosition(position).Piece != nil && b.GetCellByPosition(position).Piece.Name == "King" && b.GetCellByPosition(position).Piece.Color != color {
+
+			// check if the king can move
+			king := b.GetCellByPosition(position).Piece
+			king.UpdateValidMoves(b)
+			if len(king.ValidMoves) == 0 {
+				// check if any other piece can block the check
+				// for every piece of the other color
+				// if they have a move in valid moves which stops the current pieces' attack then return (true, false, false)
+				// if they have no move in valid moves which stops the current pieces' attack then return (false, true, false)
+				for _, row := range b.Cells {
+					for _, cell := range row {
+						if cell.Piece != nil && cell.Piece.Color != color {
+							cell.Piece.UpdateValidMoves(b)
+							if IsInValidMoves(cell.Piece.ValidMoves, king.ValidMoves) {
+								// TODO - need to implement proper logic to only check moves between the attacking piece and the king
+								return true, false, false
+							}
+						}
+					}
+				}
+				// Checkmate as the attacked king cannot move and no piece and block/take the piece
+				return false, true, false
+			}
+			// Check as the attacked king can move
+			return true, false, false
+		}
+
+		canMove := false
+		for _, row := range b.Cells {
+			for _, cell := range row {
+				if cell.Piece != nil && cell.Piece.Color != color {
+					cell.Piece.UpdateValidMoves(b)
+					if len(cell.Piece.ValidMoves) > 0 {
+						canMove = true
+					}
+				}
+			}
+		}
+		// Stalemate as the attacked king cannot move and no piece and block/take the piece
+		if !canMove {
+			return false, false, true
+		}
+	}
+
+	// check if no pieces of the opposite color can move and king not checked then stalemate
+
+	return false, false, false
 }

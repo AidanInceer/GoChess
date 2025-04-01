@@ -1,10 +1,7 @@
 
 TODO
-
-- Piece collision - Own pieces
-- Piece taking - Opponents pieces
-- Check
-- Checkmate
+- Check (partially complete)
+- Checkmate (partially complete)
 - Enpesant
 - Castling
 - Promotion

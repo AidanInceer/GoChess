@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync"
 )
 
 type Game struct {
@@ -25,20 +26,19 @@ type Player struct {
 func (g *Game) Play() (bool, error) {
 	moveNum := 0
 
+	//Non check or check
 	for g.GameState == 0 || g.GameState == 1 {
 		moveNum++
 		if moveNum%2 != 0 {
 			if g.GameState == 0 {
 				g.CurrentPlayer = &g.Players[0]
 				g.PlayerMove(g.CurrentPlayer.Color)
-			} else if g.GameState == 1 {
 			}
 
 		} else {
 			if g.GameState == 0 {
-				g.CurrentPlayer = &g.Players[0]
+				g.CurrentPlayer = &g.Players[1]
 				g.PlayerMove(g.CurrentPlayer.Color)
-			} else if g.GameState == 1 {
 			}
 
 		}
@@ -68,23 +68,30 @@ func (g *Game) PlayerMove(PlayerColor string) {
 }
 
 func (g *Game) RefreshValidMoves() {
-	// naive approach need to update all the valid moves for all the pieces after a piece has been moved.
+	var wg sync.WaitGroup
+
 	for _, boardRow := range g.Board.Cells {
 		for _, cell := range boardRow {
 			if cell.Piece != nil {
-				cell.Piece.UpdateValidMoves(&g.Board)
+				wg.Add(1)
+				go func(p *Piece) {
+					defer wg.Done()
+					p.UpdateValidMoves(&g.Board)
+				}(cell.Piece)
 			}
 		}
 	}
+
+	wg.Wait()
 }
 
 func ClearScreen() {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
-		cmd = exec.Command("cmd", "/c", "cls") // Windows
+		cmd = exec.Command("cmd", "/c", "cls")
 	default:
-		cmd = exec.Command("clear") // Linux/macOS
+		cmd = exec.Command("clear")
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Run()

@@ -23,9 +23,9 @@ func (p *Piece) Move(move Move, b *Board) {
 
 			p.UpdateCurrentPosition(move.To.Row, move.To.Col)
 			p.History = append(p.History, move)
-			p.UpdateValidMoves(b)
 
-			fmt.Println(DisplayListOfPositions(p.ValidMoves))
+			p.UpdateValidMoves(b)
+			fmt.Println("Valid Moves: ", DisplayListOfPositions(p.ValidMoves))
 
 		}
 	}
@@ -113,20 +113,21 @@ func (p *Piece) PawnMoves(b *Board) {
 	} else if len(p.History) == 0 && p.Color == "Black" {
 		ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}, {p.CurrentPosition.Row + 2*op, p.CurrentPosition.Col}}
 		// If White and has already moved
+
 	} else if len(p.History) != 0 && p.Color == "White" {
 		// If the cell in front is empty
-		if b.GetCellByRelativePosition(p.CurrentPosition, op, 0).Piece == nil {
+		if b.GetCellByPosition(Position{Row: p.CurrentPosition.Row + op, Col: p.CurrentPosition.Col}).Piece == nil {
 			ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}}
 			// If the cell in front is occupied by an enemy piece
-		} else {
+		} else if b.GetCellByPosition(Position{Row: p.CurrentPosition.Row + op, Col: p.CurrentPosition.Col}).Piece.Color != p.Color {
 			ValidPositions = []Position{}
 		}
 		// If Black and has already moved
 	} else if len(p.History) != 0 && p.Color == "Black" {
-		if b.GetCellByRelativePosition(p.CurrentPosition, op, 0).Piece == nil {
+		if b.GetCellByPosition(Position{Row: p.CurrentPosition.Row + op, Col: p.CurrentPosition.Col}).Piece == nil {
 			ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}}
 			// If the cell in front is occupied by an enemy piece
-		} else {
+		} else if b.GetCellByPosition(Position{Row: p.CurrentPosition.Row + op, Col: p.CurrentPosition.Col}).Piece.Color != p.Color {
 			ValidPositions = []Position{}
 		}
 	}
@@ -142,7 +143,7 @@ func (p *Piece) PawnMoves(b *Board) {
 		}
 	}
 
-	// Implement En passant
+	// TODO: Implement En passant
 
 	p.ValidMoves = ValidPositions
 }

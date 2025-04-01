@@ -96,48 +96,33 @@ func (p *Piece) UpdateValidMoves(b *Board) {
 }
 
 func (p *Piece) PawnMoves(b *Board) {
-	//get current piece position
-
-	// determine what color it is to set the +/- op
 	op := 1
 	if p.Color == "Black" {
 		op = -1
 	}
 
-	var ValidPositions []Position
+	ValidPositions := []Position{}
 
-	// if white and Piece history is Empty
-	if len(p.History) == 0 && p.Color == "White" {
-		ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}, {p.CurrentPosition.Row + 2*op, p.CurrentPosition.Col}}
-		// If Black and Piece history is Empty
-	} else if len(p.History) == 0 && p.Color == "Black" {
-		ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}, {p.CurrentPosition.Row + 2*op, p.CurrentPosition.Col}}
-		// If White and has already moved
+	// Check forward movement
+	oneStep := Position{p.CurrentPosition.Row + op, p.CurrentPosition.Col}
+	twoStep := Position{p.CurrentPosition.Row + 2*op, p.CurrentPosition.Col}
 
-	} else if len(p.History) != 0 && p.Color == "White" {
-		// If the cell in front is empty
-		if b.GetCellByPosition(Position{Row: p.CurrentPosition.Row + op, Col: p.CurrentPosition.Col}).Piece == nil {
-			ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}}
-			// If the cell in front is occupied by an enemy piece
-		} else if b.GetCellByPosition(Position{Row: p.CurrentPosition.Row + op, Col: p.CurrentPosition.Col}).Piece.Color != p.Color {
-			ValidPositions = []Position{}
-		}
-		// If Black and has already moved
-	} else if len(p.History) != 0 && p.Color == "Black" {
-		if b.GetCellByPosition(Position{Row: p.CurrentPosition.Row + op, Col: p.CurrentPosition.Col}).Piece == nil {
-			ValidPositions = []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col}}
-			// If the cell in front is occupied by an enemy piece
-		} else if b.GetCellByPosition(Position{Row: p.CurrentPosition.Row + op, Col: p.CurrentPosition.Col}).Piece.Color != p.Color {
-			ValidPositions = []Position{}
+	if b.GetCellByPosition(oneStep).Piece == nil {
+		ValidPositions = append(ValidPositions, oneStep)
+
+		// If the pawn hasn't moved, it can move two steps
+		if len(p.History) == 0 && b.GetCellByPosition(twoStep).Piece == nil {
+			ValidPositions = append(ValidPositions, twoStep)
 		}
 	}
 
-	takePositions := []Position{{p.CurrentPosition.Row + op, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row + op, p.CurrentPosition.Col + 1}}
-
-	for _, position := range takePositions {
+	// Check diagonal captures
+	for _, position := range []Position{
+		{p.CurrentPosition.Row + op, p.CurrentPosition.Col - 1},
+		{p.CurrentPosition.Row + op, p.CurrentPosition.Col + 1},
+	} {
 		if position.IsInBounds() {
-			if b.GetCellByPosition(position).Piece == nil {
-			} else if b.GetCellByPosition(position).Piece.Color != p.Color {
+			if target := b.GetCellByPosition(position).Piece; target != nil && target.Color != p.Color {
 				ValidPositions = append(ValidPositions, position)
 			}
 		}
@@ -149,13 +134,19 @@ func (p *Piece) PawnMoves(b *Board) {
 }
 
 func (p *Piece) KnightMoves(b *Board) {
+	moves := []Position{
+		{p.CurrentPosition.Row + 2, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row + 2, p.CurrentPosition.Col - 1},
+		{p.CurrentPosition.Row - 2, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row - 2, p.CurrentPosition.Col - 1},
+		{p.CurrentPosition.Row + 1, p.CurrentPosition.Col + 2}, {p.CurrentPosition.Row + 1, p.CurrentPosition.Col - 2},
+		{p.CurrentPosition.Row - 1, p.CurrentPosition.Col + 2}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col - 2},
+	}
 
-	KnightPositions := []Position{{p.CurrentPosition.Row + 2, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row + 2, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row - 2, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row - 2, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row + 1, p.CurrentPosition.Col + 2}, {p.CurrentPosition.Row + 1, p.CurrentPosition.Col - 2}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col + 2}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col - 2}}
-	ValidPositions := []Position{}
-	for _, position := range KnightPositions {
-		currentPieceColour := b.GetCellByPosition(p.CurrentPosition).Piece.Color
-		if position.IsInBounds() && position.CanBeOccupied(b, currentPieceColour) {
-			ValidPositions = append(ValidPositions, position)
+	ValidPositions := make([]Position, 0, len(moves)) // Preallocate capacity
+	currentColor := p.Color                           // Fetch once instead of every loop iteration
+
+	for _, pos := range moves {
+		if pos.IsInBounds() && pos.CanBeOccupied(b, currentColor) {
+			ValidPositions = append(ValidPositions, pos)
 		}
 	}
 
@@ -165,63 +156,46 @@ func (p *Piece) KnightMoves(b *Board) {
 func (p *Piece) RookMoves(b *Board) {
 
 	currentCell := b.GetCell(p.CurrentPosition.Row, p.CurrentPosition.Col)
+	rowCells := b.GetRow(currentCell)
+	colCells := b.GetCol(currentCell)
 
-	Row := b.GetRow(currentCell)
-	Column := b.GetCol(currentCell)
-
-	// Convert the Rows and Column Cells to a list of Position if its not the current position
-	RowPositions := p.CheckLinearMoves(b, Row, currentCell, "row")
-	ColumnPositions := p.CheckLinearMoves(b, Column, currentCell, "col")
-
-	ValidMoves := append(RowPositions, ColumnPositions...)
-
-	p.ValidMoves = ValidMoves
+	p.ValidMoves = append(
+		p.CheckLinearMoves(b, rowCells, currentCell, "row"),
+		p.CheckLinearMoves(b, colCells, currentCell, "col")...,
+	)
 }
 
 func (p *Piece) BishopMoves(b *Board) {
-
 	currentCell := b.GetCell(p.CurrentPosition.Row, p.CurrentPosition.Col)
-
-	ValidPositions := p.CheckDiagonalMoves(b, currentCell)
-
-	p.ValidMoves = ValidPositions
+	p.ValidMoves = p.CheckDiagonalMoves(b, currentCell)
 }
 
 func (p *Piece) QueenMoves(b *Board) {
-
 	currentCell := b.GetCell(p.CurrentPosition.Row, p.CurrentPosition.Col)
 
-	Column := b.GetCol(currentCell)
-	Row := b.GetRow(currentCell)
+	// Generate all possible diagonal and linear moves
+	diagonals := p.CheckDiagonalMoves(b, currentCell)
+	rowPositions := p.CheckLinearMoves(b, b.GetRow(currentCell), currentCell, "row")
+	columnPositions := p.CheckLinearMoves(b, b.GetCol(currentCell), currentCell, "col")
 
-	Diagonals := p.CheckDiagonalMoves(b, currentCell)
-	RowPositions := p.CheckLinearMoves(b, Row, currentCell, "row")
-	ColumnPositions := p.CheckLinearMoves(b, Column, currentCell, "col")
-
-	ValidPositions := append(Diagonals, ColumnPositions...)
-	ValidPositions = append(ValidPositions, RowPositions...)
-
-	p.ValidMoves = ValidPositions
-
+	// Combine all valid positions
+	p.ValidMoves = append(append(diagonals, rowPositions...), columnPositions...)
 }
 
 func (p *Piece) KingMoves(b *Board) {
-
-	ValidPositions := []Position{}
-
-	// get all the positions around the king
-	KingPositions := []Position{{p.CurrentPosition.Row + 1, p.CurrentPosition.Col}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col}, {p.CurrentPosition.Row, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row + 1, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row + 1, p.CurrentPosition.Col - 1}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col + 1}, {p.CurrentPosition.Row - 1, p.CurrentPosition.Col - 1}}
-
-	for _, position := range KingPositions {
-		if position.IsInBounds() && position.CanBeOccupied(b, p.Color) {
-			if !b.CheckCellAttacked(position, p.Color) {
-				ValidPositions = append(ValidPositions, position)
-			}
-		}
+	directions := []Position{
+		{1, 0}, {-1, 0}, {0, 1}, {0, -1},
+		{1, 1}, {1, -1}, {-1, 1}, {-1, -1},
 	}
 
-	p.ValidMoves = ValidPositions
+	p.ValidMoves = []Position{}
 
+	for _, d := range directions {
+		newPos := Position{p.CurrentPosition.Row + d.Row, p.CurrentPosition.Col + d.Col}
+		if newPos.IsInBounds() && newPos.CanBeOccupied(b, p.Color) && !b.CheckCellAttacked(newPos, p.Color) {
+			p.ValidMoves = append(p.ValidMoves, newPos)
+		}
+	}
 }
 
 func (p *Piece) CheckLinearMoves(board *Board, cells []Cell, currCell Cell, linearType string) []Position {

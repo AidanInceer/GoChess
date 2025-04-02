@@ -1,8 +1,12 @@
 package chess
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"slices"
 	"sort"
+	"strings"
 )
 
 type Piece struct {
@@ -107,7 +111,8 @@ func (p *Piece) PawnMoves(b *Board) {
 	oneStep := Position{p.CurrentPosition.Row + op, p.CurrentPosition.Col}
 	twoStep := Position{p.CurrentPosition.Row + 2*op, p.CurrentPosition.Col}
 
-	if b.GetCellByPosition(oneStep).Piece == nil {
+	// Check if the one step is in bounds and can be occupied
+	if oneStep.IsInBounds() && oneStep.CanBeOccupied(b, p.Color) {
 		ValidPositions = append(ValidPositions, oneStep)
 
 		// If the pawn hasn't moved, it can move two steps
@@ -130,11 +135,71 @@ func (p *Piece) PawnMoves(b *Board) {
 
 	// TODO: Implement En passant
 	// whenever a piece is moved append to game move history
-	// if previous piece moved is a pawn and has moved two squares & it is horizontally adjacent to 
+	// if previous piece moved is a pawn and has moved two squares & it is horizontally adjacent to
 
 	// TODO: Implement Promotion
+	p.CheckPromotion(b)
 
 	p.ValidMoves = ValidPositions
+}
+
+func (p *Piece) CheckPromotion(b *Board) {
+	if p.Color == "White" {
+		if p.CurrentPosition.Row == 7 {
+			fmt.Println("Valid Moves: ", DisplayListOfPositions(p.ValidMoves))
+			p.Name, p.Display = p.SelectPromotionPiece()
+			fmt.Println("Promoting to", p.Name)
+			p.UpdateValidMoves(b)
+		}
+	} else {
+		if p.CurrentPosition.Row == 0 {
+			fmt.Println("Valid Moves: ", DisplayListOfPositions(p.ValidMoves))
+			p.Name, p.Display = p.SelectPromotionPiece()
+			fmt.Println("Promoting to", p.Name)
+			p.UpdateValidMoves(b)
+		}
+	}
+}
+
+func (p *Piece) SelectPromotionPiece() (string, string) {
+	// Request player move from the user
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Pawn has been promoted - Please choose your promotion piece from (K)night, (B)ishop, (R)ook, (Q)ueen: ")
+	inputMove, _ := reader.ReadString('\n')
+	inputMove = strings.TrimSpace(inputMove)
+	validPromotionPieces := []string{"K", "B", "R", "Q"}
+	if !slices.Contains(validPromotionPieces, inputMove) {
+		fmt.Println("Invalid promotion piece")
+		_, _ = p.SelectPromotionPiece()
+	}
+
+	if inputMove == "K" {
+		if p.Color == "White" {
+			return "Knight", "♘"
+		} else {
+			return "Knight", "♞"
+		}
+	} else if inputMove == "B" {
+		if p.Color == "White" {
+			return "Bishop", "♗"
+		} else {
+			return "Bishop", "♝"
+		}
+	} else if inputMove == "R" {
+
+		if p.Color == "White" {
+			return "Rook", "♖"
+		} else {
+			return "Rook", "♜"
+		}
+	} else if inputMove == "Q" {
+		if p.Color == "White" {
+			return "Queen", "♕"
+		} else {
+			return "Queen", "♛"
+		}
+	}
+	return "", ""
 }
 
 func (p *Piece) KnightMoves(b *Board) {
@@ -146,7 +211,7 @@ func (p *Piece) KnightMoves(b *Board) {
 	}
 
 	ValidPositions := make([]Position, 0, len(moves))
-	currentColor := p.Color                          
+	currentColor := p.Color
 
 	for _, pos := range moves {
 		if pos.IsInBounds() && pos.CanBeOccupied(b, currentColor) {

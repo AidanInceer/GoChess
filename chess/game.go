@@ -16,7 +16,14 @@ type Game struct {
 	CurrentPlayer *Player
 	CurrentTurn   int
 	GameState     int // 0: ongoing, 1: check, 2: checkmate, 3: stalemate
-	MoveHistory   []Move
+	MoveHistory   []MoveHistory
+}
+
+type MoveHistory struct {
+	MoveNum    int
+	Move       Move
+	PieceName  string
+	PieceColor string
 }
 
 type Player struct {
@@ -68,12 +75,13 @@ func (g *Game) PlayerMove(PlayerColor string, GameState int, depth int) {
 	// Request player move from the user
 	fmt.Printf("%s's turn:\n", PlayerColor)
 	piece, move := g.RequestMove(PlayerColor, g.GameState, depth)
+	g.RefreshValidMoves()
 
-	piece.Move(move, &g.Board)
+	piece.Move(move, &g.Board, &g.MoveHistory)
 
 	g.RefreshValidMoves()
 	fmt.Println(g.GameState)
-	check, checkmate, stalemate := piece.UpdateGameState(&g.Board)
+	check, checkmate, stalemate := piece.UpdateGameState(&g.Board, g.MoveHistory)
 	if check {
 		g.GameState = 1
 	} else if checkmate {
@@ -93,7 +101,7 @@ func (g *Game) RefreshValidMoves() {
 				wg.Add(1)
 				go func(p *Piece) {
 					defer wg.Done()
-					p.UpdateValidMoves(&g.Board)
+					p.UpdateValidMoves(&g.Board, g.MoveHistory)
 				}(cell.Piece)
 			}
 		}
@@ -199,6 +207,7 @@ func (g *Game) ValidatePostConversion(piece *Piece, move Move, PlayerColor strin
 	}
 
 	if !piece.InValidMoves(move.To) {
+		fmt.Println("Valid Moves: ", DisplayListOfPositions(piece.ValidMoves))
 		fmt.Println("Invalid move:", move.To.Display())
 		return false
 	}
@@ -207,6 +216,23 @@ func (g *Game) ValidatePostConversion(piece *Piece, move Move, PlayerColor strin
 
 func (g *Game) GetCurrentPlayer() *Player {
 	return g.CurrentPlayer
+}
+
+func (g *Game) GetMoveHistory() []MoveHistory {
+	return g.MoveHistory
+}
+
+func (g *Game) GetMoveHistoryByMoveNum(moveNum int) MoveHistory {
+	for _, move := range g.MoveHistory {
+		if move.MoveNum == moveNum {
+			return move
+		}
+	}
+	return MoveHistory{}
+}
+
+func (g *Game) GetLastMove() MoveHistory {
+	return g.MoveHistory[len(g.MoveHistory)-1]
 }
 
 func (g *Game) Setup() {
@@ -336,13 +362,13 @@ func (g *Game) Setup() {
 	g.CurrentPlayer = &PlayerWhite
 	g.CurrentTurn = 1
 	g.GameState = 0
-	g.MoveHistory = []Move{}
+	g.MoveHistory = []MoveHistory{}
 
 	for cellRow := range g.Board.Cells {
 		for cellCol := range g.Board.Cells[cellRow] {
 			cell := g.Board.GetCell(cellRow, cellCol)
 			if cell.Piece != nil {
-				cell.Piece.UpdateValidMoves(&g.Board)
+				cell.Piece.UpdateValidMoves(&g.Board, g.MoveHistory)
 			}
 		}
 

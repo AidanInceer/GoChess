@@ -15,6 +15,10 @@ func (p *Position) IsInBounds() bool {
 	return p.Row >= 0 && p.Row < 8 && p.Col >= 0 && p.Col < 8
 }
 
+func InBounds(p Position) bool {
+	return p.Row >= 0 && p.Row < 8 && p.Col >= 0 && p.Col < 8
+}
+
 func (p *Position) IsEqual(otherPosition *Position) bool {
 	return p.Row == otherPosition.Row && p.Col == otherPosition.Col
 }
@@ -34,7 +38,7 @@ func DisplayListOfPositions(positions []Position) string {
 		output = append(output, colVal+rowVal)
 	}
 	sort.Strings(output)
-	result := "Positions: " + strings.Join(output, ", ")
+	result := strings.Join(output, ", ")
 
 	return result
 }

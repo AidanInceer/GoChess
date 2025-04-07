@@ -19,18 +19,26 @@ type Piece struct {
 	History         []Move
 }
 
-func (p *Piece) Move(move Move, b *Board) {
+func (p *Piece) Move(move Move, b *Board, moveHistory *[]MoveHistory) {
 	for _, validMove := range p.ValidMoves {
 		if validMove == move.To {
+
+			p.EnPassant(move, b, moveHistory)
 			b.Cells[move.From.Row][move.From.Col].Piece = nil
 			b.Cells[move.To.Row][move.To.Col].Piece = p
 
 			p.UpdateCurrentPosition(move.To.Row, move.To.Col)
 			p.History = append(p.History, move)
 
-			p.UpdateValidMoves(b)
+			p.UpdateValidMoves(b, *moveHistory)
 			fmt.Println("Valid Moves: ", DisplayListOfPositions(p.ValidMoves))
 
+			*moveHistory = append(*moveHistory, MoveHistory{
+				MoveNum:    len(*moveHistory) + 1,
+				Move:       move,
+				PieceName:  p.Name,
+				PieceColor: p.Color,
+			})
 		}
 	}
 
@@ -38,6 +46,22 @@ func (p *Piece) Move(move Move, b *Board) {
 
 func (p *Piece) StringPosition() string {
 	return fmt.Sprintf("(%d, %d)", p.CurrentPosition.Row, p.CurrentPosition.Col)
+}
+
+func (p *Piece) EnPassant(move Move, b *Board, moveHistory *[]MoveHistory) {
+	if p.Color == "White" {
+		if move.From.Row == 4 && move.To.Row == 5 && (move.From.Col == move.To.Col+1 || move.From.Col == move.To.Col-1) && b.GetCellByPosition(move.To).Piece == nil {
+			// If the current move is Enpassant then remove the piece which was taken
+			b.Cells[move.From.Row][move.From.Col-1].Piece.Display = "_"
+			b.Cells[move.To.Row][move.From.Col-1].Piece = nil
+		}
+	} else {
+		if move.From.Row == 3 && move.To.Row == 2 && (move.From.Col == move.To.Col+1 || move.From.Col == move.To.Col-1) && b.GetCellByPosition(move.To).Piece == nil {
+			// If the current move is Enpassant then remove the piece which was taken
+			b.Cells[move.To.Row][move.From.Col+1].Piece = nil
+			b.Cells[move.From.Row][move.From.Col+1].Piece.Display = "_"
+		}
+	}
 }
 
 func (p *Piece) IsValidPiece(move Move, b Board, color string) bool {
@@ -81,11 +105,11 @@ func (p *Piece) UpdateCurrentPosition(row int, col int) {
 	p.CurrentPosition.Col = col
 }
 
-func (p *Piece) UpdateValidMoves(b *Board) {
+func (p *Piece) UpdateValidMoves(b *Board, moveHistory []MoveHistory) {
 
 	switch p.Name {
 	case "Pawn":
-		p.PawnMoves(b)
+		p.PawnMoves(b, moveHistory)
 	case "Knight":
 		p.KnightMoves(b)
 	case "Bishop":
@@ -99,7 +123,7 @@ func (p *Piece) UpdateValidMoves(b *Board) {
 	}
 }
 
-func (p *Piece) PawnMoves(b *Board) {
+func (p *Piece) PawnMoves(b *Board, moveHistory []MoveHistory) {
 	op := 1
 	if p.Color == "Black" {
 		op = -1
@@ -134,29 +158,61 @@ func (p *Piece) PawnMoves(b *Board) {
 	}
 
 	// TODO: Implement En passant
-	// whenever a piece is moved append to game move history
-	// if previous piece moved is a pawn and has moved two squares & it is horizontally adjacent to
 
-	// TODO: Implement Promotion
-	p.CheckPromotion(b)
+	if len(moveHistory) > 0 {
+
+		lastMove := moveHistory[len(moveHistory)-1]
+
+		if lastMove.PieceName == "Pawn" && lastMove.PieceColor == "White" {
+			if InBounds(Position{p.CurrentPosition.Row, p.CurrentPosition.Col + 1}) {
+				if lastMove.Move.From.Row == 1 && lastMove.Move.To.Row == 3 && lastMove.Move.From.Col == p.CurrentPosition.Col+1 {
+					ValidPositions = append(ValidPositions, Position{p.CurrentPosition.Row + op, p.CurrentPosition.Col + 1})
+				}
+			}
+
+			if InBounds(Position{p.CurrentPosition.Row, p.CurrentPosition.Col - 1}) {
+				if lastMove.Move.From.Row == 1 && lastMove.Move.To.Row == 3 && lastMove.Move.From.Col == p.CurrentPosition.Col-1 {
+					ValidPositions = append(ValidPositions, Position{p.CurrentPosition.Row + op, p.CurrentPosition.Col - 1})
+				}
+			}
+		}
+
+		if lastMove.PieceName == "Pawn" && lastMove.PieceColor == "Black" {
+			if InBounds(Position{p.CurrentPosition.Row, p.CurrentPosition.Col + 1}) {
+				if lastMove.Move.From.Row == 6 && lastMove.Move.To.Row == 4 && lastMove.Move.From.Col == p.CurrentPosition.Col+1 {
+					ValidPositions = append(ValidPositions, Position{p.CurrentPosition.Row + op, p.CurrentPosition.Col + 1})
+
+				}
+			}
+			if InBounds(Position{p.CurrentPosition.Row, p.CurrentPosition.Col - 1}) {
+				if lastMove.Move.From.Row == 6 && lastMove.Move.To.Row == 4 && lastMove.Move.From.Col == p.CurrentPosition.Col-1 {
+					ValidPositions = append(ValidPositions, Position{p.CurrentPosition.Row + op, p.CurrentPosition.Col - 1})
+				}
+			}
+		}
+	}
+
+	// TODO: Implement Full Promotion
+	p.CheckPromotion(b, moveHistory)
 
 	p.ValidMoves = ValidPositions
+
 }
 
-func (p *Piece) CheckPromotion(b *Board) {
+func (p *Piece) CheckPromotion(b *Board, moveHistory []MoveHistory) {
 	if p.Color == "White" {
 		if p.CurrentPosition.Row == 7 {
 			fmt.Println("Valid Moves: ", DisplayListOfPositions(p.ValidMoves))
 			p.Name, p.Display = p.SelectPromotionPiece()
 			fmt.Println("Promoting to", p.Name)
-			p.UpdateValidMoves(b)
+			p.UpdateValidMoves(b, moveHistory)
 		}
 	} else {
 		if p.CurrentPosition.Row == 0 {
 			fmt.Println("Valid Moves: ", DisplayListOfPositions(p.ValidMoves))
 			p.Name, p.Display = p.SelectPromotionPiece()
 			fmt.Println("Promoting to", p.Name)
-			p.UpdateValidMoves(b)
+			p.UpdateValidMoves(b, moveHistory)
 		}
 	}
 }
@@ -374,7 +430,7 @@ func (p *Piece) CheckDiagonalMoves(board *Board, currCell Cell) []Position {
 // if yes set the game state to 1 (check)
 // if the king also cannot move set the game state to 2 (checkmate)
 // -- also need to check if any other piece can block the current check
-func (p *Piece) UpdateGameState(b *Board) (bool, bool, bool) {
+func (p *Piece) UpdateGameState(b *Board, moveHistory []MoveHistory) (bool, bool, bool) {
 	color := p.Color
 
 	for _, position := range p.ValidMoves {
@@ -382,7 +438,7 @@ func (p *Piece) UpdateGameState(b *Board) (bool, bool, bool) {
 
 			// check if the king can move
 			king := b.GetCellByPosition(position).Piece
-			king.UpdateValidMoves(b)
+			king.UpdateValidMoves(b, moveHistory)
 			if len(king.ValidMoves) == 0 {
 				// check if any other piece can block the check
 				// for every piece of the other color
@@ -391,7 +447,7 @@ func (p *Piece) UpdateGameState(b *Board) (bool, bool, bool) {
 				for _, row := range b.Cells {
 					for _, cell := range row {
 						if cell.Piece != nil && cell.Piece.Color != color {
-							cell.Piece.UpdateValidMoves(b)
+							cell.Piece.UpdateValidMoves(b, moveHistory)
 							if IsInValidMoves(cell.Piece.ValidMoves, king.ValidMoves) {
 								// TODO - need to implement proper logic to only check moves between the attacking piece and the king
 								return true, false, false
@@ -410,7 +466,7 @@ func (p *Piece) UpdateGameState(b *Board) (bool, bool, bool) {
 		for _, row := range b.Cells {
 			for _, cell := range row {
 				if cell.Piece != nil && cell.Piece.Color != color {
-					cell.Piece.UpdateValidMoves(b)
+					cell.Piece.UpdateValidMoves(b, moveHistory)
 					if len(cell.Piece.ValidMoves) > 0 {
 						canMove = true
 					}

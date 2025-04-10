@@ -1,7 +1,9 @@
 
 TODO
-- Check (partially complete)
-- Checkmate (partially complete)
-- Enpesant
+- Check:
+    - Allow for pieces to block check
+    - Revert gamestate when not in check (king not attacked)
+    - prevent king from taking piece if it results in check
+- Checkmate Allow for pieces to block check
 - Castling
-- Promotion
+- Fix move errors

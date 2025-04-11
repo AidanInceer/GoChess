@@ -136,7 +136,7 @@ func (p *Piece) PawnMoves(b *Board, moveHistory []MoveHistory) {
 	twoStep := Position{p.CurrentPosition.Row + 2*op, p.CurrentPosition.Col}
 
 	// Check if the one step is in bounds and can be occupied
-	if oneStep.IsInBounds() && oneStep.CanBeOccupied(b, p.Color) {
+	if oneStep.IsInBounds() && b.GetCellByPosition(oneStep).Piece == nil {
 		ValidPositions = append(ValidPositions, oneStep)
 
 		// If the pawn hasn't moved, it can move two steps

@@ -6,4 +6,3 @@ TODO
     - prevent king from taking piece if it results in check
 - Checkmate Allow for pieces to block check
 - Castling
-- Fix move errors

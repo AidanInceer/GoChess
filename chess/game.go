@@ -70,8 +70,6 @@ func (g *Game) PlayerMove(PlayerColor string, GameState int, depth int) {
 	// ClearScreen()
 	g.Board.Display()
 
-	fmt.Println(depth)
-
 	// Request player move from the user
 	fmt.Printf("%s's turn:\n", PlayerColor)
 	piece, move := g.RequestMove(PlayerColor, g.GameState, depth)
@@ -123,23 +121,23 @@ func ClearScreen() {
 }
 
 func (g *Game) RequestMove(PlayerColor string, GameState int, depth int) (Piece, Move) {
+	for {
+		inputMove := g.MoveInput()
+		moveString, valid := g.ValidatePreInput(inputMove)
 
-	inputMove := g.MoveInput()
+		if !valid {
+			continue // Try again
+		}
 
-	moveString, valid := g.ValidatePreInput(inputMove)
+		move := g.MoveParser(moveString)
+		piece := g.Board.GetCell(move.From.Row, move.From.Col).Piece
 
-	if !valid {
-		g.PlayerMove(PlayerColor, GameState, depth+1)
+		if !g.ValidatePostConversion(piece, move, PlayerColor) {
+			continue // Try again
+		}
+
+		return *piece, move
 	}
-	move := g.MoveParser(moveString)
-	piece := g.Board.GetCell(move.From.Row, move.From.Col).Piece
-	valid = g.ValidatePostConversion(piece, move, PlayerColor)
-	if !valid {
-		g.PlayerMove(PlayerColor, g.GameState, depth+1)
-	}
-
-	return *piece, move
-
 }
 
 func (g *Game) MoveInput() string {
